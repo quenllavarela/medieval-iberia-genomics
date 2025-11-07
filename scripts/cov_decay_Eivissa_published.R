@@ -13,7 +13,7 @@ snps_within_chr<-0.005
 width_i_r<-0.001
 minr<-0.005
 n_groups<-100
-targets_C14<-fread("targets_C14date_young.txt") %>% rename("ind"=V1,"C14_date"=V2,"yesno"=V3)
+targets_C14<-fread("targets_date_include.txt") %>% rename("ind"=V1,"C14_date"=V2,"yesno"=V3)
 mean_date<-floor(targets_C14 %>% filter(yesno==1) %>% summarise(date=mean(C14_date))) %>% unlist()
 
 cor_parallel <- function(mat1,mat2,n_blocks) {
@@ -56,7 +56,7 @@ cov_parallel <- function(mat1,mat2,n_blocks) {
 
 
 
-n_groups<-2
+n_groups<-100
 cov_r_prop <- c()
 chromosomes <- c(1:22)
 cov_r_prop <- lapply(1:n_groups, function(i){
@@ -192,7 +192,7 @@ fwrite(all_coefs_cov,file="generations_cov.txt",sep="\t",quote=FALSE,col.names=T
 fitted_cov_r <-coefs_cov %>% group_by(ind) %>% 
                                       mutate(g=as.numeric(g),A=as.numeric(A),C=as.numeric(C)) %>% 
                                       summarise_at(c("g","A","C"),mean,na.rm=TRUE)%>% 
-                                      mutate(date=as.character(mean_date),
+                                      mutate(date=ifelse(ind=="global","global",as.character(mean_date)),
                                              sample_code=c("global",targets_C14 %>% filter(yesno==1) %>% select(ind) %>% unlist())) %>%
   mutate(dateplot=ifelse(ind=="global",ind,sample_code))
 
@@ -200,9 +200,9 @@ cov_r_global_2groups_plot <- as.data.frame(rbind(
                                    cov_r %>% filter(i==1) %>% 
                                      filter(ind=="global")%>%
                                      group_by(ind,interval_r) %>% summarise(cov=mean(cov)) %>%
-                                     mutate(date=as.character(mean_date)) %>% left_join(all_coefs_cov %>% select(ind,date,sample_code),by=c("ind","date")),  
+                                     mutate(date="global") %>% left_join(all_coefs_cov %>% select(ind,date,sample_code),by=c("ind","date")),  
                                    cov_r %>% filter(i==1) %>%
-                                     #filter(ind!="global")%>% 
+                                     filter(ind!="global")%>% 
                                      group_by(ind,interval_r) %>% summarise(cov=mean(cov)) %>% 
                                      mutate(date=as.character(mean_date)) %>% left_join(all_coefs_cov %>% select(ind,date,sample_code),by=c("ind","date")))) %>%                         
   mutate(dateplot=ifelse(ind=="global",ind,sample_code),
@@ -222,13 +222,13 @@ label_df <- fitted_cov_r_global_2groups_plot %>%
   left_join(all_coefs_cov %>% select(-date,-ind) ,by="sample_code") %>%
   mutate(text=paste0("g = ",round(mean,2)," (",round(Q025,2),", ",round(Q975,2),")"))
 
-ggplot() +
-  geom_point(data=cov_r_global_2groups_plot %>% filter(dateplot!="global"),aes(x=(1-interval_r),y=cov,group=sample_code,color=date),alpha=0.3,size=0.5)+
-  geom_line(data=fitted_cov_r_global_2groups_plot %>% filter(dateplot!="global"),aes(x=(1-r),y=cov,group=sample_code,color=date,linewidth =line,linetype = as.factor(line)))+
+plot_cov_decay<-ggplot() +
+  geom_point(data=cov_r_global_2groups_plot ,aes(x=(1-interval_r),y=cov,group=sample_code,color=date),alpha=0.3,size=0.5)+
+  geom_line(data=fitted_cov_r_global_2groups_plot ,aes(x=(1-r),y=cov,group=sample_code,color=date,linewidth =line,linetype = as.factor(line)))+
   scale_linewidth_continuous(range=c(0.4,1.2))+
   scale_linetype_manual(values=c("dashed","solid"))+
-  scale_color_manual(values=c("#FF6F59"))+
-  geom_text(data = label_df %>% filter(dateplot!="global"), aes(label = text ,x=x,y=y,color=date), hjust = 1,nudge_x=0.01)+
+  scale_color_manual(values=c("#FF6F59","#254441"))+
+  geom_text(data = label_df , aes(label = text ,x=x,y=y,color=date), hjust = 1,nudge_x=0.01)+
   ylim(-0.1,0.4)+
   xlim(0.6,1.01)+
   guides(
@@ -241,31 +241,8 @@ ggplot() +
   facet_wrap(~dateplot,ncol=3)+
   theme(aspect.ratio=1) +
   theme_minimal()
-ggplot() +
-  geom_point(data=cov_r_global_2groups_plot %>% filter(dateplot=="global"),aes(x=(1-interval_r),y=cov,group=sample_code,color=date),alpha=0.3,size=1.2,shape=19)+
-  geom_line(data=fitted_cov_r_global_2groups_plot %>% filter(dateplot=="global"),aes(x=(1-r),y=cov,group=sample_code,color=date,linewidth =line,linetype = as.factor(line)))+
-  scale_linewidth_continuous(range=c(0.8,1.5))+
-  scale_linetype_manual(values=c("dashed"))+
-  scale_color_manual(values=c("#FF6F59"))+
-  geom_text(data = label_df %>% filter(dateplot=="global"), aes(label = text ,x=x,y=y,color=date), hjust = 1,nudge_x=0.01)+
-  ylim(-0.1,0.4)+
-  xlim(0.6,1.01)+
-  guides(
-    color = "none", 
-    linetype = "none",
-    linewidth = "none", 
-    size = "none",
-    fill = "none"  
-  )+
-  facet_wrap(~dateplot,ncol=3)+
-  theme(aspect.ratio=1) +
-  theme_minimal()
 
-
-
-
-
-
+ggsave(plot=plot_cov_decay,file=paste0("plot_cov_decay.pdf"))
 
 
 
