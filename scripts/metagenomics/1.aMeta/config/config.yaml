@@ -1,0 +1,32 @@
+samplesheet: "config/samples.tsv"
+
+# KrakenUniq Microbial NCBI NT database (if you are interested in prokaryotes only)
+krakenuniq_db: /cfs/klemming/projects/supr/archaeogenetics/databases/DBDIR_KrakenUniq_MicrobialNT
+
+# KrakenUniq full NCBI NT database (if you are interested in prokaryotes and eukaryotes)
+# krakenuniq_db: /cfs/klemming/projects/supr/archaeogenetics/databases/DBDIR_KrakenUniq_Full_NT
+
+# Bowtie2 index and helping files for following up microbial pathogens 
+bowtie2_db: /cfs/klemming/projects/supr/archaeogenetics/databases/PathoGenome/library.pathogen.fna
+pathogenomesFound: /cfs/klemming/projects/supr/archaeogenetics/databases/PathoGenome/pathogensFound.very_inclusive.tab
+bowtie2_seqid2taxid_db: /cfs/klemming/projects/supr/archaeogenetics/databases/PathoGenome/seqid2taxid.pathogen.map
+
+# Bowtie2 index for full NCBI NT (for quick followup of prokaryotes and eukaryotes)
+# bowtie2_db: /cfs/klemming/projects/supr/archaeogenetics/databases/BOWTIE2_Full_NT_Database/library.fna
+
+# Helping files for building Malt database 
+malt_nt_fasta: /cfs/klemming/projects/supr/archaeogenetics/databases/BOWTIE2_Full_NT_Database/library.fna
+malt_seqid2taxid_db: /cfs/klemming/projects/supr/archaeogenetics/databases/BOWTIE2_Full_NT_Database/seqid2taxid.map.orig
+malt_accession2taxid: /cfs/klemming/projects/supr/archaeogenetics/databases/BOWTIE2_Full_NT_Database/nucl_gb.accession2taxid
+
+# A path for downloading NCBI taxonomy files (performed automatically)
+# you do not need to change this line
+ncbi_db: resources/ncbi
+
+# Breadth and depth of coverage filters 
+# default thresholds are very conservative, can be tuned by users
+n_unique_kmers: 1000
+n_tax_reads: 100
+
+analyses:
+  mapdamage: false

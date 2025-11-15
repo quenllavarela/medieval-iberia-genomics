@@ -1,0 +1,105 @@
+cluster-cancel: "scancel"
+restart-times: "0"
+jobscript: "slurm-jobscript.sh"
+cluster: "slurm-submit.py"
+cluster-status: "slurm-status.py"
+max-jobs-per-second: "50"
+max-status-checks-per-second: "5"
+local-cores: 1
+latency-wait: "5"
+use-conda: "True"
+use-singularity: "False"
+jobs: "100"
+printshellcmds: "True"
+
+default-resources:
+  - runtime=180
+  - mem_mb=880 #Memory for one core
+  - disk_mb=10000
+
+# Amount of threads per rule
+# NB. Dardel nodes have 256GB and contains 128 cores (but 256 logical cores/virtual cores) of 2GB (2000MB) 
+set-threads:
+  - aggregate=50
+  - Authentication_Plots=10
+  - Authentication_Score=4
+  - Bowtie2_Alignment=128
+  - Breadth_Of_Coverage=5
+  - Build_Malt_DB=128
+  - FastQC_AfterTrimming=2
+  - FastQC_BeforeTrimming=2
+  - KrakenUniq=128
+  - KrakenUniq2Krona=1
+  - Malt=256
+  - Malt_AbundanceMatrix_Rma6=1
+  - Malt_Extract=1
+  - Malt_QuantifyAbundance=1
+  - MapDamage=2
+  - Read_Length_Distribution=3
+  - Post_Processing=3
+  - Samtools_Faidx=128
+
+# Dardel has several partitions
+# "main" whole node usage (256GB) for max 24 hours
+# "long" whole node usage (256GB) for max 7 days
+# "shared" shared node usage (256GB) for max 24 hours for small jobs
+# "memory" Large/Huge/Giant whole nodes (512GB - 1TB - 2TB) for max 24 hours
+# disk_mb is a value in MB for the max size for the output files
+# runtime is a value in minutes for the maximum time
+set-resources:
+  - aggregate:mem_mb=100000
+  - Authentication_Plots:mem_mb=10000
+  - Authentication_Score:mem_mb=8000
+  - Bowtie2_Alignment:partition=memory
+  - Bowtie2_Alignment:runtime=1440
+  - Bowtie2_Alignment:mem_mb=456000
+  - Breadth_Of_Coverage:mem_mb=10000
+  - Build_Malt_DB:partition=memory
+  - Build_Malt_DB:runtime=1440
+  - Build_Malt_DB:mem_mb=1760G
+  - Cutadapt_Adapter_Trimming:runtime=540
+  - Deamination:runtime=1440
+  - FastQC_AfterTrimming:mem_mb=1760
+  - FastQC_AfterTrimming:runtime=540
+  - FastQC_BeforeTrimming:mem_mb=1760
+  - FastQC_BeforeTrimming:runtime=540
+  - KrakenUniq:partition=memory
+  - KrakenUniq:runtime=1440
+  - KrakenUniq:mem_mb=915400
+  - KrakenUniq2Krona:partition=shared
+  - KrakenUniq2Krona:runtime=1440
+  - KrakenUniq2Krona:mem_mb=50000
+  - Malt:partition=memory
+  - Malt:runtime=7200
+  - Malt:mem_mb=1760G
+  - Malt:disk_mb=1000000
+  - Malt_AbundanceMatrix_Rma6:partition=memory
+  - Malt_AbundanceMatrix_Rma6:runtime=1440
+  - Malt_AbundanceMatrix_Rma6:mem_mb=456000
+  - Malt_Extract:runtime=360
+  - Malt_Extract:partition=shared
+  - Malt_Extract:mem_mb=50000
+  - Malt_QuantifyAbundance:partition=memory
+  - Malt_QuantifyAbundance:runtime=1440
+  - Malt_QuantifyAbundance:mem_mb=440000
+  - MapDamage:partition=shared
+  - MapDamage:mem_mb=32000
+  - MapDamage:runtime=1440
+  - PMD_scores:runtime=1440
+  - Post_Processing:partition=shared
+  - Post_Processing:mem_mb=6000
+  - Read_Length_Distribution:mem_mb=6000
+
+# Example resource configuration
+# default-resources:
+#   - runtime=100
+#   - mem_mb=6000
+#   - disk_mb=1000000
+# # set-threads: map rule names to threads
+# set-threads:
+#   - single_core_rule=1
+#   - multi_core_rule=10
+# # set-resources: map rule names to resources in general
+# set-resources:
+#   - high_memory_rule:mem_mb=12000
+#   - long_running_rule:runtime=1200
