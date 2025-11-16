@@ -24,7 +24,7 @@ Make sure you are in the main aMeta folder before running the next commands.
 First do a dry run to check that Snakemake understands the workflow and DAG correctly without running any jobs.
 
 ```bash
-snakemake --snakefile workflow/Snakefile           --use-conda           -j 500           --profile slurm_profile           --rerun-incomplete           --rerun-triggers mtime           --keep-going           -n
+snakemake --snakefile workflow/Snakefile --use-conda -j 500 --profile slurm_profile --rerun-incomplete --rerun-triggers mtime --keep-going -n
 ```
 
 The `-n` flag tells Snakemake to perform a dry run. It prints which jobs would be executed but does not submit anything to Slurm.
@@ -34,7 +34,7 @@ The `-n` flag tells Snakemake to perform a dry run. It prints which jobs would b
 If the dry run looks correct you can remove `-n` and start the full run.
 
 ```bash
-snakemake --snakefile workflow/Snakefile           --use-conda           -j 500           --profile slurm_profile           --rerun-incomplete           --rerun-triggers mtime           --keep-going
+snakemake --snakefile workflow/Snakefile --use-conda -j 500 --profile slurm_profile --rerun-incomplete --rerun-triggers mtime --keep-going
 ```
 
 ### Short description of the main flags
