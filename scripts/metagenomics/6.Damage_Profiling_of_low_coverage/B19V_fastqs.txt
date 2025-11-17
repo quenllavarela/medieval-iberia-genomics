@@ -1,0 +1,13 @@
+s.101_1511900_MaltExtracted.fastq.gz
+s.103_1511900_MaltExtracted.fastq.gz
+s.117_1511900_MaltExtracted.fastq.gz
+s.131_1511900_MaltExtracted.fastq.gz
+s.133_1511900_MaltExtracted.fastq.gz
+s.133_A_1511900_MaltExtracted.fastq.gz
+s.133_B_1511900_MaltExtracted.fastq.gz
+s.157_A_1511900_MaltExtracted.fastq.gz
+s.157_B_1511900_MaltExtracted.fastq.gz
+s.157_merged_1511900_MaltExtracted.fastq.gz
+s.167_1511900_MaltExtracted.fastq.gz
+s.197_D_1511900_MaltExtracted.fastq.gz
+s.315_1511900_MaltExtracted.fastq.gz

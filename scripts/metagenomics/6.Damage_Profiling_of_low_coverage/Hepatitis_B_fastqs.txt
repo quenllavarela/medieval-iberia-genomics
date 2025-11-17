@@ -1,0 +1,6 @@
+s.101_10407_MaltExtracted.fastq.gz
+s.117_10407_MaltExtracted.fastq.gz
+s.133_merged_10407_MaltExtracted.fastq.gz
+s.155_10407_MaltExtracted.fastq.gz
+s.167_10407_MaltExtracted.fastq.gz
+s.315_10407_MaltExtracted.fastq.gz
