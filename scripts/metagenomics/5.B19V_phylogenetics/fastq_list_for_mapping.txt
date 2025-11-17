@@ -1,0 +1,10 @@
+fastqs/ERR7563587_merged.fastq.gz
+fastqs/ERR7563609_merged.fastq.gz
+fastqs/ERR7564468_merged.fastq.gz
+fastqs/ERR7564473_merged.fastq.gz
+fastqs/ERR7566245_merged.fastq.gz
+fastqs/ERR7566247_merged.fastq.gz
+fastqs/s.131_1511900_MaltExtracted.fastq.gz
+fastqs/s.133_merged_1511900_MaltExtracted.fastq.gz
+fastqs/s.157_merged_1511900_MaltExtracted.fastq.gz
+fastqs/s.315_1511900_MaltExtracted.fastq.gz

@@ -1,0 +1,4 @@
+bwa_alignment/s.131_1511900_MaltExtracted.rl20.dedup.bam
+bwa_alignment/s.133_merged_1511900_MaltExtracted.rl20.dedup.bam
+bwa_alignment/s.157_merged_1511900_MaltExtracted.rl20.dedup.bam
+bwa_alignment/s.315_1511900_MaltExtracted.rl20.dedup.bam
