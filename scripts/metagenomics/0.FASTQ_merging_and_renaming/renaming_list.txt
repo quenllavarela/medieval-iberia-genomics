@@ -1,0 +1,14 @@
+Archaeological_IDs	LabIDs
+s.101	ldo115
+s.103	ldo116
+s.107	ldo118
+s.117	ldo121
+s.131	ldo123
+s.133	ldo124
+s.155	ldo126
+s.157	ldo128
+s.162	ldo130
+s.167	ldo131
+s.197	ldo136
+s.313	ldo140
+s.315	ldo141
