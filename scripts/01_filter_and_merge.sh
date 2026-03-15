@@ -1,95 +1,265 @@
 #!/bin/bash
+
 # -----------------------------------------------------------------------------
 # 01_filter_and_merge.sh
-# Filters and merges Ibiza ancient samples with modern reference panel
-# Produces PLINK files and a final VCF for downstream analysis
+#
+# Updated, cleaned, and corrected version of the filtering and merging workflow
+# used in the study to combine imputed ancient Ibiza genomes with a modern
+# reference panel.
+#
+# This script preserves the main analytical logic of the executed pipeline
+# while simplifying file-specific intermediate steps and improving robustness
+# and readability.
+#
+# Main outputs:
+#   1. merged PLINK dataset
+#   2. merged datasets filtered at MAF 0.01 and 0.05
+#   3. SNP-matched VCFs for downstream analyses such as RFMix
+#
+# Required software:
+#   bcftools
+#   tabix
+#   plink
 # -----------------------------------------------------------------------------
 
-# === Modules (optional; comment if not on HPC) ===
+set -euo pipefail
+
+# === Modules (optional; comment out if not on HPC) ===
 ml bioinfo-tools
 ml bcftools
 ml tabix
 ml plink
 
-# === User-defined paths ===
+# === User-defined input files ===
+# Ibiza dataset should already be filtered to retain genotypes with GP >= 0.99.
+# KOENIG_VCF can be a .vcf.gz or .bcf file readable by bcftools.
 IBIZA_VCF="/path/to/ibiza.vcf.gz"
-KOENIG_VCF="/path/to/koenig.vcf.gz"
-OUT_PREFIX="merged.GP99_dataset"
-MAF_THRESHOLD=0.05
-MIND_THRESHOLD=0.15
-GENO_THRESHOLD=0.2
+KOENIG_VCF="/path/to/koenig.bcf"
+
+# === Prefixes ===
+IBIZA_PREFIX="ibiza"
+KOENIG_PREFIX="koenig"
+MERGED_PREFIX="merged.GP99_dataset"
+
+# === Thresholds ===
+INITIAL_MAF_IBIZA=0.01
+INITIAL_MAF_KOENIG=0.05
+
+IBIZA_MIND=0.15
+IBIZA_GENO=0.20
+IBIZA_MAF=0.01
+
+KOENIG_MIND=0.15
+KOENIG_GENO=0.20
+KOENIG_MAF=0.05
 
 # -----------------------------------------------------------------------------
-# Step 1: Filter VCFs for biallelic SNPs and MAF
+# Step 1: Filter Ibiza dataset
 # -----------------------------------------------------------------------------
-for VCF in "$IBIZA_VCF" "$KOENIG_VCF"; do
-    BASE=$(basename "$VCF" .vcf.gz)
-    echo "Processing $BASE ..."
+echo "Filtering Ibiza dataset..."
 
-    # Keep only biallelic SNPs
-    bcftools view -m2 -M2 -v snps "$VCF" -Oz -o "${BASE}.biallelic.vcf.gz"
-    tabix -p vcf "${BASE}.biallelic.vcf.gz"
+bcftools view -m2 -M2 -v snps "$IBIZA_VCF" -Oz -o "${IBIZA_PREFIX}.biallelic.vcf.gz"
+bcftools index -f "${IBIZA_PREFIX}.biallelic.vcf.gz"
 
-    # Filter for MAF >= 0.01 (optional; can be adjusted)
-    bcftools view -i 'MAF[0]>=0.01' "${BASE}.biallelic.vcf.gz" -Oz -o "${BASE}.biallelic.maf01.vcf.gz"
-    tabix -p vcf "${BASE}.biallelic.maf01.vcf.gz"
+bcftools view -i "MAF[0] >= ${INITIAL_MAF_IBIZA}" \
+    "${IBIZA_PREFIX}.biallelic.vcf.gz" \
+    -Oz -o "${IBIZA_PREFIX}.biallelic.maf01.vcf.gz"
+tabix -f -p vcf "${IBIZA_PREFIX}.biallelic.maf01.vcf.gz"
 
-    # Convert to PLINK format
-    plink --vcf "${BASE}.biallelic.maf01.vcf.gz" --make-bed --out "${BASE}.biallelic"
-    plink --bfile "${BASE}.biallelic" --mind $MIND_THRESHOLD --make-bed --out "${BASE}.biallelic.min${MIND_THRESHOLD}"
-    plink --bfile "${BASE}.biallelic.min${MIND_THRESHOLD}" --geno $GENO_THRESHOLD --make-bed --out "${BASE}.biallelic.min${MIND_THRESHOLD}.geno${GENO_THRESHOLD}"
-    plink --bfile "${BASE}.biallelic.min${MIND_THRESHOLD}.geno${GENO_THRESHOLD}" --maf $MAF_THRESHOLD --make-bed --out "${BASE}.biallelic.min${MIND_THRESHOLD}.geno${GENO_THRESHOLD}.maf${MAF_THRESHOLD}"
-done
+plink --vcf "${IBIZA_PREFIX}.biallelic.maf01.vcf.gz" \
+      --make-bed \
+      --out "${IBIZA_PREFIX}.biallelic"
 
-# -----------------------------------------------------------------------------
-# Step 2: Harmonize SNP IDs (CHR:POS) and remove duplicates
-# -----------------------------------------------------------------------------
-echo "Harmonizing SNP IDs..."
-awk '{print $1 ":" $4}' "${IBIZA_VCF%.vcf.gz}.biallelic.min${MIND_THRESHOLD}.geno${GENO_THRESHOLD}.maf${MAF_THRESHOLD}.bim" > ibiza_snps.txt
-awk '{print $1 ":" $4}' "${KOENIG_VCF%.vcf.gz}.biallelic.min${MIND_THRESHOLD}.geno${GENO_THRESHOLD}.maf${MAF_THRESHOLD}.bim" > koenig_snps.txt
+plink --bfile "${IBIZA_PREFIX}.biallelic" \
+      --mind ${IBIZA_MIND} \
+      --make-bed \
+      --out "${IBIZA_PREFIX}.mind"
 
-sort ibiza_snps.txt > sorted_ibiza_snps.txt
-sort koenig_snps.txt > sorted_koenig_snps.txt
+plink --bfile "${IBIZA_PREFIX}.mind" \
+      --geno ${IBIZA_GENO} \
+      --make-bed \
+      --out "${IBIZA_PREFIX}.geno"
 
-# Subset PLINK datasets to common SNPs
-plink --bfile "${IBIZA_VCF%.vcf.gz}.biallelic.min${MIND_THRESHOLD}.geno${GENO_THRESHOLD}.maf${MAF_THRESHOLD}" \
-      --extract sorted_koenig_snps.txt --make-bed --out ibiza_common
-plink --bfile "${KOENIG_VCF%.vcf.gz}.biallelic.min${MIND_THRESHOLD}.geno${GENO_THRESHOLD}.maf${MAF_THRESHOLD}" \
-      --extract sorted_ibiza_snps.txt --make-bed --out koenig_common
-
-# Remove duplicate SNPs
-awk '{print $2}' ibiza_common.bim | sort | uniq -d > ibiza_dup.txt
-awk '{print $2}' koenig_common.bim | sort | uniq -d > koenig_dup.txt
-plink --bfile ibiza_common --exclude ibiza_dup.txt --make-bed --out ibiza_nodup
-plink --bfile koenig_common --exclude koenig_dup.txt --make-bed --out koenig_nodup
+plink --bfile "${IBIZA_PREFIX}.geno" \
+      --maf ${IBIZA_MAF} \
+      --make-bed \
+      --out "${IBIZA_PREFIX}.final"
 
 # -----------------------------------------------------------------------------
-# Step 3: Merge datasets
+# Step 2: Filter Koenig dataset
+# -----------------------------------------------------------------------------
+echo "Filtering Koenig dataset..."
+
+bcftools view -m2 -M2 -v snps "$KOENIG_VCF" -Oz -o "${KOENIG_PREFIX}.biallelic.vcf.gz"
+bcftools index -f "${KOENIG_PREFIX}.biallelic.vcf.gz"
+
+bcftools view -i "MAF[0] >= ${INITIAL_MAF_KOENIG}" \
+    "${KOENIG_PREFIX}.biallelic.vcf.gz" \
+    -Oz -o "${KOENIG_PREFIX}.biallelic.maf05.vcf.gz"
+tabix -f -p vcf "${KOENIG_PREFIX}.biallelic.maf05.vcf.gz"
+
+plink --vcf "${KOENIG_PREFIX}.biallelic.maf05.vcf.gz" \
+      --make-bed \
+      --out "${KOENIG_PREFIX}.biallelic"
+
+plink --bfile "${KOENIG_PREFIX}.biallelic" \
+      --mind ${KOENIG_MIND} \
+      --make-bed \
+      --out "${KOENIG_PREFIX}.mind"
+
+plink --bfile "${KOENIG_PREFIX}.mind" \
+      --geno ${KOENIG_GENO} \
+      --make-bed \
+      --out "${KOENIG_PREFIX}.geno"
+
+plink --bfile "${KOENIG_PREFIX}.geno" \
+      --maf ${KOENIG_MAF} \
+      --make-bed \
+      --out "${KOENIG_PREFIX}.final"
+
+# -----------------------------------------------------------------------------
+# Step 3: Rename SNP IDs to CHR:POS
+# -----------------------------------------------------------------------------
+echo "Renaming SNP IDs to CHR:POS..."
+
+awk 'BEGIN{OFS="\t"} {$2=$1":"$4; print}' \
+    "${IBIZA_PREFIX}.final.bim" > "${IBIZA_PREFIX}.chrpos.bim"
+cp "${IBIZA_PREFIX}.final.bed" "${IBIZA_PREFIX}.chrpos.bed"
+cp "${IBIZA_PREFIX}.final.fam" "${IBIZA_PREFIX}.chrpos.fam"
+
+awk 'BEGIN{OFS="\t"} {$2=$1":"$4; print}' \
+    "${KOENIG_PREFIX}.final.bim" > "${KOENIG_PREFIX}.chrpos.bim"
+cp "${KOENIG_PREFIX}.final.bed" "${KOENIG_PREFIX}.chrpos.bed"
+cp "${KOENIG_PREFIX}.final.fam" "${KOENIG_PREFIX}.chrpos.fam"
+
+# -----------------------------------------------------------------------------
+# Step 4: Identify shared SNPs
+# -----------------------------------------------------------------------------
+echo "Identifying shared SNPs..."
+
+cut -f2 "${IBIZA_PREFIX}.chrpos.bim" | sort -u > "${IBIZA_PREFIX}.snps.txt"
+cut -f2 "${KOENIG_PREFIX}.chrpos.bim" | sort -u > "${KOENIG_PREFIX}.snps.txt"
+
+comm -12 "${IBIZA_PREFIX}.snps.txt" "${KOENIG_PREFIX}.snps.txt" > common_snps.txt
+
+plink --bfile "${IBIZA_PREFIX}.chrpos" \
+      --extract common_snps.txt \
+      --make-bed \
+      --out "${IBIZA_PREFIX}.common"
+
+plink --bfile "${KOENIG_PREFIX}.chrpos" \
+      --extract common_snps.txt \
+      --make-bed \
+      --out "${KOENIG_PREFIX}.common"
+
+# -----------------------------------------------------------------------------
+# Step 5: Remove duplicated SNP IDs if present
+# -----------------------------------------------------------------------------
+echo "Removing duplicated SNP IDs if needed..."
+
+awk '{print $2}' "${IBIZA_PREFIX}.common.bim" | sort | uniq -d > "${IBIZA_PREFIX}.dup.txt"
+awk '{print $2}' "${KOENIG_PREFIX}.common.bim" | sort | uniq -d > "${KOENIG_PREFIX}.dup.txt"
+
+if [ -s "${IBIZA_PREFIX}.dup.txt" ]; then
+    plink --bfile "${IBIZA_PREFIX}.common" \
+          --exclude "${IBIZA_PREFIX}.dup.txt" \
+          --make-bed \
+          --out "${IBIZA_PREFIX}.nodup"
+else
+    cp "${IBIZA_PREFIX}.common.bed" "${IBIZA_PREFIX}.nodup.bed"
+    cp "${IBIZA_PREFIX}.common.bim" "${IBIZA_PREFIX}.nodup.bim"
+    cp "${IBIZA_PREFIX}.common.fam" "${IBIZA_PREFIX}.nodup.fam"
+fi
+
+if [ -s "${KOENIG_PREFIX}.dup.txt" ]; then
+    plink --bfile "${KOENIG_PREFIX}.common" \
+          --exclude "${KOENIG_PREFIX}.dup.txt" \
+          --make-bed \
+          --out "${KOENIG_PREFIX}.nodup"
+else
+    cp "${KOENIG_PREFIX}.common.bed" "${KOENIG_PREFIX}.nodup.bed"
+    cp "${KOENIG_PREFIX}.common.bim" "${KOENIG_PREFIX}.nodup.bim"
+    cp "${KOENIG_PREFIX}.common.fam" "${KOENIG_PREFIX}.nodup.fam"
+fi
+
+# -----------------------------------------------------------------------------
+# Step 6: Merge datasets
 # -----------------------------------------------------------------------------
 echo "Merging datasets..."
-plink --bfile koenig_nodup --bmerge ibiza_nodup.bed ibiza_nodup.bim ibiza_nodup.fam --make-bed --out "$OUT_PREFIX"
 
-# Resolve merge conflicts by excluding problematic SNPs
-plink --bfile ibiza_nodup --exclude ${OUT_PREFIX}-merge.missnp --make-bed --out ibiza_flipped
-plink --bfile koenig_nodup --exclude ${OUT_PREFIX}-merge.missnp --make-bed --out koenig_flipped
+plink --bfile "${KOENIG_PREFIX}.nodup" \
+      --bmerge "${IBIZA_PREFIX}.nodup.bed" "${IBIZA_PREFIX}.nodup.bim" "${IBIZA_PREFIX}.nodup.fam" \
+      --make-bed \
+      --out "${MERGED_PREFIX}" || true
 
-plink --bfile koenig_flipped --bmerge ibiza_flipped.bed ibiza_flipped.bim ibiza_flipped.fam --make-bed --out "$OUT_PREFIX"
+if [ -f "${MERGED_PREFIX}-merge.missnp" ]; then
+    echo "Merge conflicts detected. Excluding problematic SNPs and retrying..."
+
+    plink --bfile "${IBIZA_PREFIX}.nodup" \
+          --exclude "${MERGED_PREFIX}-merge.missnp" \
+          --make-bed \
+          --out "${IBIZA_PREFIX}.mergefix"
+
+    plink --bfile "${KOENIG_PREFIX}.nodup" \
+          --exclude "${MERGED_PREFIX}-merge.missnp" \
+          --make-bed \
+          --out "${KOENIG_PREFIX}.mergefix"
+
+    plink --bfile "${KOENIG_PREFIX}.mergefix" \
+          --bmerge "${IBIZA_PREFIX}.mergefix.bed" "${IBIZA_PREFIX}.mergefix.bim" "${IBIZA_PREFIX}.mergefix.fam" \
+          --make-bed \
+          --out "${MERGED_PREFIX}"
+fi
+
+if [ ! -f "${MERGED_PREFIX}.bim" ]; then
+    echo "ERROR: merge failed and ${MERGED_PREFIX}.bim was not created." >&2
+    exit 1
+fi
 
 # -----------------------------------------------------------------------------
-# Step 4: Prepare VCF 
+# Step 7: Generate merged datasets with different MAF thresholds
 # -----------------------------------------------------------------------------
-cut -f2 "$OUT_PREFIX".bim > snpstoextractvcf.txt
+echo "Generating merged datasets with MAF thresholds..."
 
-for BASE in "${IBIZA_VCF%.vcf.gz}" "${KOENIG_VCF%.vcf.gz}"; do
-    zcat "${BASE}.biallelic.maf01.vcf.gz" | \
-        awk 'BEGIN {OFS="\t"} !/^#/ {$3 = $1":"$2}1' | \
-        bgzip > "${BASE}.biallelic.final.vcf.gz"
-    tabix -p vcf "${BASE}.biallelic.final.vcf.gz"
-done
+plink --bfile "${MERGED_PREFIX}" \
+      --maf 0.01 \
+      --make-bed \
+      --out "${MERGED_PREFIX}.maf0.01"
 
-bcftools view -i 'ID=@snpstoextractvcf.txt' "${IBIZA_VCF%.vcf.gz}.biallelic.final.vcf.gz" -Oz -o ibiza.final.vcf.gz
-bcftools view -i 'ID=@snpstoextractvcf.txt' "${KOENIG_VCF%.vcf.gz}.biallelic.final.vcf.gz" -Oz -o koenig.final.vcf.gz
-tabix -p vcf ibiza.final.vcf.gz
-tabix -p vcf koenig.final.vcf.gz
+plink --bfile "${MERGED_PREFIX}" \
+      --maf 0.05 \
+      --make-bed \
+      --out "${MERGED_PREFIX}.maf0.05"
 
-echo "Filtering and merging complete. Final PLINK and VCF files ready."
+# -----------------------------------------------------------------------------
+# Step 8: Prepare final VCFs for downstream analyses
+# -----------------------------------------------------------------------------
+echo "Preparing final SNP-matched VCFs..."
+
+cut -f2 "${MERGED_PREFIX}.bim" > snpstoextractvcf.txt
+
+zcat "${IBIZA_PREFIX}.biallelic.vcf.gz" | \
+awk 'BEGIN {OFS="\t"} /^#/ {print; next} {$3=$1":"$2; print}' | \
+bgzip > "${IBIZA_PREFIX}.biallelic.chrpos.vcf.gz"
+tabix -f -p vcf "${IBIZA_PREFIX}.biallelic.chrpos.vcf.gz"
+
+zcat "${KOENIG_PREFIX}.biallelic.vcf.gz" | \
+awk 'BEGIN {OFS="\t"} /^#/ {print; next} {$3=$1":"$2; print}' | \
+bgzip > "${KOENIG_PREFIX}.biallelic.chrpos.vcf.gz"
+tabix -f -p vcf "${KOENIG_PREFIX}.biallelic.chrpos.vcf.gz"
+
+bcftools view -i 'ID=@snpstoextractvcf.txt' \
+    "${IBIZA_PREFIX}.biallelic.chrpos.vcf.gz" \
+    -Oz -o "${IBIZA_PREFIX}.final.vcf.gz"
+tabix -f -p vcf "${IBIZA_PREFIX}.final.vcf.gz"
+
+bcftools view -i 'ID=@snpstoextractvcf.txt' \
+    "${KOENIG_PREFIX}.biallelic.chrpos.vcf.gz" \
+    -Oz -o "${KOENIG_PREFIX}.final.vcf.gz"
+tabix -f -p vcf "${KOENIG_PREFIX}.final.vcf.gz"
+
+echo "Done."
+echo "Main merged dataset: ${MERGED_PREFIX}"
+echo "Merged datasets with MAF filters: ${MERGED_PREFIX}.maf0.01 and ${MERGED_PREFIX}.maf0.05"
+
+echo "Final VCFs: ${IBIZA_PREFIX}.final.vcf.gz and ${KOENIG_PREFIX}.final.vcf.gz"
