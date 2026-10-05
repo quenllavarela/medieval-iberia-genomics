@@ -5,7 +5,7 @@ import os
 # module load PDC/23.12 biopython/1.84-cpeGNU-23.12
 
 # Replace with your email
-Entrez.email = "zoe.pochon@gmail.com"
+Entrez.email = "your.email@example.com"
 
 # List of accession numbers
 accessions = [
